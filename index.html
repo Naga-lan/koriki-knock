@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>工業力学 計算ノック（大きさ・角度ランダム版）</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 20px auto; padding: 10px; background: #f5f5f5; line-height: 1.6; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; margin: 5px 0; }
+        button:hover { background: #0056b3; }
+        input { padding: 8px; font-size: 16px; width: 100px; margin-right: 10px; }
+        .alert { padding: 10px; border-radius: 4px; margin-top: 15px; font-weight: bold; }
+        .success { background: #d4edda; color: #155724; }
+        .danger { background: #f8d7da; color: #721c24; }
+        .commentary { background: #e2e3e5; color: #383d41; margin-top: 10px; padding: 15px; border-left: 5px solid #6c757d; font-size: 14px; white-space: pre-wrap; }
+        .status-panel { display: flex; justify-content: space-between; background: #343a40; color: white; padding: 10px 15px; border-radius: 5px; margin-bottom: 15px; font-weight: bold; }
+        .combo-box { color: #ffc107; }
+        #vector-canvas { background: #fafafa; border: 1px solid #ddd; border-radius: 4px; display: block; margin: 15px auto; max-width: 100%; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <h2>工業力学 計算ノック</h2>
+    
+    <div class="status-panel">
+        <span id="status-stage">ステージ: 1 / 3</span>
+        <span id="status-combo" class="combo-box">現在: 0 / 3 連続正解中 🔥</span>
+    </div>
+
+    <div id="game-zone" class="card">
+        <h3 id="q-title">ステージ1：2つの力の合成</h3>
+        
+        <canvas id="vector-canvas" width="300" height="300"></canvas>
+
+        <p id="q-text" style="font-size: 18px; font-weight: bold; color: #333;"></p>
+        <p style="font-size: 12px; color: #666;">※小数点以下第2位を四捨五入し、第1位まで求めてください（例: 23.4）</p>
+        
+        <div>
+            <label id="input-label">答：</label>
+            <input type="number" id="user-answer" step="0.1" placeholder="0.0">
+            <span id="unit-label">N</span>
+            <button id="submit-btn" onclick="checkAnswer()">回答する</button>
+        </div>
+
+        <div id="result-message" class="alert hidden"></div>
+        <div id="commentary-zone" class="commentary hidden"></div>
+        
+        <button id="next-btn" class="hidden" onclick="nextQuestion()" style="background: #28a745; margin-top: 15px;">次の問題へ</button>
+    </div>
+
+<script>
+let currentStage = 1; 
+let comboCount = 0;   
+let currentQ = {};
+const angles = [15, 30, 45, 60, 75, 90, 105, 120, 150, 215];
+
+generateQuestion();
+
+function generateQuestion() {
+    document.getElementById('result-message').classList.add('hidden');
+    document.getElementById('commentary-zone').classList.add('hidden');
+    document.getElementById('next-btn').classList.add('hidden');
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('user-answer').value = '';
+    
+    document.getElementById('status-stage').innerText = `ステージ: ${currentStage} / 3`;
+    document.getElementById('status-combo').innerText = `現在: ${comboCount} / 3 連続正解中 🔥`;
+
+    const f1 = Math.floor(Math.random() * 60) + 20; // 20〜79N
+    const f2 = Math.floor(Math.random() * 60) + 20;
+    const f3 = Math.floor(Math.random() * 60) + 20;
+    
+    // 出題モードをランダム決定 (0: 大きさを求める, 1: 角度を求める)
+    const qMode = Math.random() < 0.5 ? 0 : 1;
+
+    if (currentStage === 1) {
+        document.getElementById('q-title').innerText = "ステージ1：2つの力の合成";
+        const th = angles[Math.floor(Math.random() * angles.length)];
+        const rad = th * Math.PI / 180;
+        
+        // 物理計算
+        const rSize = Math.sqrt(f1*f1 + f2*f2 + 2*f1*f2*Math.cos(rad));
+        // 水平方向（F1）基準の合力の角度を計算
+        const rx = f1 + f2 * Math.cos(rad);
+        const ry = f2 * Math.sin(rad);
+        const rAngle = Math.atan2(ry, rx) * 180 / Math.PI;
+
+        if (qMode === 0) {
+            currentQ = {
+                rawAns: rSize, // ★追加
+                ans: Math.round(rSize * 10) / 10,
+                text: `同一の着力点に働く2つの力 F1 = ${f1} N、F2 = ${f2} N があります。2つの力のなす角が ${th}° であるとき、合力 R の「大きさ」を求めなさい。`,
+                comment: `【解説】\nR = √(F1² + F2² + 2F1・F2・cosθ)\n= √(${f1}² + ${f2}² + 2・${f1}・${f2}・cos(${th}°))\n= ${rSize.toFixed(2)} ≒ ${Math.round(rSize * 10) / 10} N`
+            };
+            document.getElementById('unit-label').innerText = "N";
+            drawStage1(f1, f2, th, true); 
+        } else {
+            currentQ = {
+                rawAns: rAngle, // ★追加
+                ans: Math.round(rAngle * 10) / 10,
+                text: `同一の着力点に働く2つの力 F1 = ${f1} N（水平右向き）、F2 = ${f2} N があります。2つの力のなす角が ${th}° であるとき、合力 R の方向は「F1から反時計回りに何°」か求めなさい。`,
+                comment: `【解説】\n水平(X)成分: Fx = ${f1} + ${f2}・cos(${th}°) = ${rx.toFixed(2)} N\n垂直(Y)成分: Fy = ${f2}・sin(${th}°) = ${ry.toFixed(2)} N\n角度 φ = tan⁻¹(Fy / Fx) = tan⁻¹(${ry.toFixed(2)} / ${rx.toFixed(2)}) = ${rAngle.toFixed(2)}° ≒ ${Math.round(rAngle * 10) / 10}°`
+            };
+            document.getElementById('unit-label').innerText = "°";
+            drawStage1(f1, f2, th, true); 
+        }
+    } 
+    else if (currentStage === 2) {
+        document.getElementById('q-title').innerText = "ステージ2：3つの力の合成（同一着力点）";
+        
+        const th2 = Math.floor(Math.random() * 360); 
+        const th3 = Math.floor(Math.random() * 360); 
+        
+        const rad2 = th2 * Math.PI / 180;
+        const rad3 = th3 * Math.PI / 180;
+        
+        const fx = f1 + f2 * Math.cos(rad2) + f3 * Math.cos(rad3);
+        const fy = 0 + f2 * Math.sin(rad2) + f3 * Math.sin(rad3);
+        const rSize = Math.sqrt(fx*fx + fy*fy);
+        const rAngle = Math.atan2(fy, fx) * 180 / Math.PI;
+
+        if (qMode === 0) {
+            currentQ = {
+                rawAns: rSize, // ★追加
+                ans: Math.round(rSize * 10) / 10,
+                text: `同一着力点から、基準（0°方向）に F1 = ${f1} N、${th2}°方向に F2 = ${f2} N、${th3}°方向に F3 = ${f3} N の力が働いています。この合力 R の「大きさ」を求めなさい。`,
+                comment: `【解説】\nFx = ${f1} + ${f2}・cos(${th2}°) + ${f3}・cos(${th3}°) = ${fx.toFixed(2)} N\nFy = 0 + ${f2}・sin(${th2}°) + ${f3}・sin(${th3}°) = ${fy.toFixed(2)} N\nR = √(Fx² + Fy²) = ${rSize.toFixed(2)} ≒ ${Math.round(rSize * 10) / 10} N`
+            };
+            document.getElementById('unit-label').innerText = "N";
+        } else {
+            currentQ = {
+                rawAns: rAngle, // ★追加
+                ans: Math.round(rAngle * 10) / 10,
+                text: `同一着力点から、基準（0°方向）に F1 = ${f1} N、${th2}°方向に F2 = ${f2} N、${th3}°方向に F3 = ${f3} N の力が働いています。この合力 R の方向は「F1から反時計回りに何°」か求めなさい。`,
+                comment: `【解説】\nFx = ${f1} + ${f2}・cos(${th2}°) + ${f3}・cos(${th3}°) = ${fx.toFixed(2)} N\nFy = 0 + ${f2}・sin(${th2}°) + ${f3}・sin(${th3}°) = ${fy.toFixed(2)} N\n角度 φ = tan⁻¹(Fy / Fx) = tan⁻¹(${fy.toFixed(2)} / ${fx.toFixed(2)}) = ${rAngle.toFixed(2)}° ≒ ${Math.round(rAngle * 10) / 10}°`
+            };
+            document.getElementById('unit-label').innerText = "°";
+        }
+        drawStage2(f1, f2, f3, th2, th3); 
+    }
+    else if (currentStage === 3) {
+        document.getElementById('q-title').innerText = "ステージ3：3つの力の合成（異なる着力点）";
+        
+        const x1 = 1; const x2 = 3; const x3 = 5;
+        const R = f1 + f2 + f3;
+        const Ma = (f1 * x1) + (f2 * x2) + (f3 * x3);
+        const rLength = Ma / R;
+        
+        currentQ = {
+            rawAns: rLength, // ★追加
+            ans: Math.round(rLength * 10) / 10,
+            text: `水平な梁の左端Aから、x1 = ${x1} m の位置に F1 = ${f1} N、x2 = ${x2} m の位置に F2 = ${f2} N、x3 = ${x3} m の位置に F3 = ${f3} N の下向きの平行な力が働いています。この合力の作用位置は、左端Aから何mの距離にあるか求めなさい。`,
+            comment: `【解説】\nR = ${f1} + ${f2} + ${f3} = ${R} N\nMA = (${f1}・${x1}) + (${f2}・${x2}) + (${f3}・${x3}) = ${Ma} N・m\nX = MA / R = ${Ma} / ${R} = ${rLength.toFixed(2)} ≒ ${Math.round(rLength * 10) / 10} m`
+        };
+        document.getElementById('unit-label').innerText = "m";
+        
+        // 【修正】白紙化を廃止し、ステージ3用の描画関数を呼び出す
+        drawStage3(f1, f2, f3, x1, x2, x3); 
+    }
+    document.getElementById('q-text').innerText = currentQ.text;
+}
+
+function drawStage1(f1, f2, angleDeq, showAngleText) {
+    const canvas = document.getElementById('vector-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const centerX = 100; const centerY = 180; 
+
+    const maxForce = Math.max(f1, f2);
+    const availableSpace = Math.min(canvas.width - centerX - 40, centerY - 40, centerX - 40);
+    const scale = availableSpace / maxForce;
+
+    ctx.beginPath(); ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI); ctx.fillStyle = '#333'; ctx.fill();
+
+    const f1X = centerX + f1 * scale;
+    drawArrow(ctx, centerX, centerY, f1X, centerY, '#007bff', `F1=${f1}N`);
+
+    const rad = -angleDeq * Math.PI / 180;
+    const f2X = centerX + (f2 * scale) * Math.cos(rad);
+    const f2Y = centerY + (f2 * scale) * Math.sin(rad);
+    drawArrow(ctx, centerX, centerY, f2X, f2Y, '#dc3545', `F2=${f2}N`);
+    
+    ctx.beginPath(); ctx.arc(centerX, centerY, 30, 0, rad, true);
+    ctx.strokeStyle = '#6c757d'; ctx.lineWidth = 1; ctx.stroke();
+    
+    if (showAngleText) {
+        ctx.fillStyle = '#6c757d'; ctx.font = '12px Arial';
+        ctx.fillText(`${angleDeq}°`, centerX + 35, centerY - 10);
+    }
+}
+
+function drawStage2(f1, f2, f3, th2, th3) {
+    const canvas = document.getElementById('vector-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const centerX = 150; const centerY = 150; 
+
+    const maxForce = Math.max(f1, f2, f3);
+    const scale = 110 / maxForce; 
+
+    ctx.beginPath(); ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI); ctx.fillStyle = '#333'; ctx.fill();
+
+    drawArrow(ctx, centerX, centerY, centerX + f1*scale, centerY, '#007bff', `F1=${f1}N`);
+    
+    const rad2 = -th2 * Math.PI / 180; 
+    drawArrow(ctx, centerX, centerY, centerX + (f2*scale)*Math.cos(rad2), centerY + (f2*scale)*Math.sin(rad2), '#dc3545', `F2=${f2}N`);
+    
+    const rad3 = -th3 * Math.PI / 180;
+    drawArrow(ctx, centerX, centerY, centerX + (f3*scale)*Math.cos(rad3), centerY + (f3*scale)*Math.sin(rad3), '#28a745', `F3=${f3}N`);
+}
+
+// 【新規追加】ステージ3用の梁と下向きの並行力群を描画する関数
+function drawStage3(f1, f2, f3, x1, x2, x3) {
+    const canvas = document.getElementById('vector-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 梁全体の長さの基準（仕様上、x=0〜6mとする）
+    const beamLengthMeters = 6;
+    const startX = 30; // 梁の左端座標
+    const endX = canvas.width - 30; // 梁の右端座標
+    const beamY = 100; // 梁を引く高さ座標（下向き矢印を描くため上寄りに配置）
+    const pixelPerMeter = (endX - startX) / beamLengthMeters;
+
+    // 力の大きさに応じた縦方向のダウンスケール（最大120pxの長さに制限）
+    const maxForce = Math.max(f1, f2, f3);
+    const forceScale = 120 / maxForce;
+
+    // 1. 梁（はり）本体の描画
+    ctx.strokeStyle = '#343a40';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(startX, beamY);
+    ctx.lineTo(endX, beamY);
+    ctx.stroke();
+
+    // 2. 左端支点Aの印
+    ctx.fillStyle = '#ffc107';
+    ctx.beginPath();
+    ctx.arc(startX, beamY, 6, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText('A (0m)', startX - 15, beamY - 15);
+
+    // 3. 各下向き平行力の描画
+    // F1 (x1 = 1mの位置)
+    const f1PosX = startX + x1 * pixelPerMeter;
+    drawArrow(ctx, f1PosX, beamY, f1PosX, beamY + (f1 * forceScale), '#007bff', `F1=${f1}N (x=${x1}m)`);
+
+    // F2 (x2 = 3mの位置)
+    const f2PosX = startX + x2 * pixelPerMeter;
+    drawArrow(ctx, f2PosX, beamY, f2PosX, beamY + (f2 * forceScale), '#dc3545', `F2=${f2}N (x=${x2}m)`);
+
+    // F3 (x3 = 5mの位置)
+    const f3PosX = startX + x3 * pixelPerMeter;
+    drawArrow(ctx, f3PosX, beamY, f3PosX, beamY + (f3 * forceScale), '#28a745', `F3=${f3}N (x=${x3}m)`);
+}
+
+function drawArrow(ctx, fromx, fromy, tox, toy, color, label) {
+    const headlen = 10;
+    const dx = tox - fromx; const dy = toy - fromy;
+    const angle = Math.atan2(dy, dx);
+    ctx.strokeStyle = color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(fromx, fromy); ctx.lineTo(tox, toy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+    ctx.fillStyle = color; ctx.fill();
+    
+    ctx.fillStyle = '#333'; ctx.font = 'bold 12px Arial'; 
+    ctx.fillText(label, tox + 5 * Math.cos(angle), toy + 5 * Math.sin(angle) - 5);
+}
+
+function clearCanvas() {
+    const canvas = document.getElementById('vector-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function checkAnswer() {
+    const userAns = parseFloat(document.getElementById('user-answer').value);
+    const msgDiv = document.getElementById('result-message');
+    const comDiv = document.getElementById('commentary-zone');
+    
+    msgDiv.classList.remove('hidden');
+    comDiv.classList.remove('hidden');
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('next-btn').classList.remove('hidden');
+    
+    // 【変更】小数第2位の切り捨て（Floor）と切り上げ（Ceil）から正解の最小・最大範囲（幅）を作る
+    const minAcceptable = Math.floor(currentQ.rawAns * 10) / 10;
+    const maxAcceptable = Math.ceil(currentQ.rawAns * 10) / 10;
+    
+    // ユーザーの入力がその範囲内にピッタリ収まっているか
+    let isCorrect = (userAns >= minAcceptable && userAns <= maxAcceptable);
+
+    // もし現在の問題の単位が「°（角度）」で、かつ上記で不正解だった場合、±360度の同値判定を行う
+    if (document.getElementById('unit-label').innerText === "°" && !isCorrect) {
+        // ユーザー入力、最小値、最大値をそれぞれ 0〜359.99... の範囲に丸め直す
+        const userRotated = ((userAns % 360) + 360) % 360;
+        const minRotated  = ((minAcceptable % 360) + 360) % 360;
+        const maxRotated  = ((maxAcceptable % 360) + 360) % 360;
+
+        if (minRotated <= maxRotated) {
+            isCorrect = (userRotated >= minRotated && userRotated <= maxRotated);
+        } else {
+            // 360度（0度）の境界線をまたぐ場合の判定
+            isCorrect = (userRotated >= minRotated || userRotated <= maxRotated);
+        }
+    }
+    
+    if (isCorrect) { 
+        comboCount++;
+        msgDiv.className = "alert success";
+        if (comboCount >= 3) {
+            if (currentStage < 3) {
+                msgDiv.innerText = "🎉 3連続正解！ステージクリア！次のステージへ！";
+                currentStage++;
+                comboCount = 0;
+            } else {
+                msgDiv.innerText = "🏆 全ステージ制覇です！おめでとうございます！";
+                comboCount = 3;
+            }
+        } else {
+            msgDiv.innerText = `⭕ 正解！ あと ${3 - comboCount} 問連続正解でクリア！`;
+        }
+        
+        // 解説表示の親切化（角度かつ本来の正解がマイナスならプラス表記も並記）
+        let correctText = `${currentQ.ans}${document.getElementById('unit-label').innerText}`;
+        if (currentQ.ans < 0 && document.getElementById('unit-label').innerText === "°") {
+            correctText = `${currentQ.ans}°（または ${(currentQ.ans + 360).toFixed(1)}°）`;
+        }
+        comDiv.innerText = `【正解】: ${correctText}\n\n${currentQ.comment}`;
+    } else {
+        comboCount = 0;
+        msgDiv.className = "alert danger";
+        msgDiv.innerText = "❌ 不正解！コンボがリセットされました。";
+        comDiv.innerText = `【正解】: ${currentQ.ans}${document.getElementById('unit-label').innerText}\n\n${currentQ.comment}`;
+        document.getElementById('status-combo').innerText = `現在: 0 / 3 連続正解中 🔥`;
+    }
+}
+
+function nextQuestion() {
+    generateQuestion();
+}
+</script>
+</body>
+</html>
