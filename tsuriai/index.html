@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>工業力学 計算ノック（つり合い編）</title>
+    <title>工業力学Ⅰ 計算ノック（つり合い編）</title>
     <style>
         body { font-family: sans-serif; max-width: 600px; margin: 20px auto; padding: 10px; background: #f5f5f5; line-height: 1.6; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
@@ -24,7 +24,7 @@
 </head>
 <body>
 
-    <h2>工業力学 計算ノック（つり合い編）</h2>
+    <h2>工業力学Ⅰ 計算ノック（つり合い編）</h2>
     
     <div class="status-panel">
         <span id="status-stage">ステージ: 1 / 4</span>
@@ -32,7 +32,7 @@
     </div>
 
     <div id="game-zone" class="card">
-        <h3 id="q-title">ステージ1：着力点が同じ2力とつり合う力</h3>
+        <h3 id="q-title">ステージ1：着力点が同じ2力とつり合う未知の力</h3>
         
         <canvas id="vector-canvas" width="300" height="300"></canvas>
 
@@ -47,9 +47,9 @@
             </div>
             
             <div id="multi-input-wrapper" class="multi-input-group hidden">
-                <div id="row-size"><strong>① つり合う力の大きさ：</strong><input type="number" id="user-ans-size" step="0.1" placeholder="0.0"> N</div>
-                <div id="row-angle"><strong>② F1に対する向き（反時計回り）：</strong><input type="number" id="user-ans-angle" step="0.1" placeholder="0.0"> °</div>
-                <div id="row-dist"><strong>③ 原点(F1着力点)からの作用線の距離：</strong><input type="number" id="user-ans-dist" step="0.1" placeholder="0.0"> m</div>
+                <div id="row-size"><strong>① 未知の力 Fn の大きさ：</strong><input type="number" id="user-ans-size" step="0.1" placeholder="0.0"> N</div>
+                <div id="row-angle"><strong>② F1に対する向き θ（反時計回り）：</strong><input type="number" id="user-ans-angle" step="0.1" placeholder="0.0"> °</div>
+                <div id="row-dist"><strong>③ 原点(F1着力点)からの作用線の距離 d：</strong><input type="number" id="user-ans-dist" step="0.1" placeholder="0.0"> m</div>
             </div>
             
             <button id="submit-btn" onclick="checkAnswer()">回答する</button>
@@ -86,7 +86,6 @@ function generateQuestion() {
     document.getElementById('status-stage').innerText = `ステージ: ${currentStage} / 4`;
     document.getElementById('status-combo').innerText = `現在: ${comboCount} / 3 連続正解中 🔥`;
 
-    // 入力フォームの動的切り替え表示
     if (currentStage === 3) {
         document.getElementById('single-input-wrapper').classList.remove('hidden');
         document.getElementById('multi-input-wrapper').classList.add('hidden');
@@ -95,42 +94,44 @@ function generateQuestion() {
         document.getElementById('multi-input-wrapper').classList.remove('hidden');
         document.getElementById('row-size').classList.remove('hidden');
         document.getElementById('row-angle').classList.remove('hidden');
-        document.getElementById('row-dist').classList.add('hidden'); // 距離は不要
+        document.getElementById('row-dist').classList.add('hidden'); 
     } else if (currentStage === 4) {
         document.getElementById('single-input-wrapper').classList.add('hidden');
         document.getElementById('multi-input-wrapper').classList.remove('hidden');
         document.getElementById('row-size').classList.remove('hidden');
         document.getElementById('row-angle').classList.remove('hidden');
-        document.getElementById('row-dist').classList.remove('hidden'); // 全て必要
+        document.getElementById('row-dist').classList.remove('hidden'); 
     }
 
     const f1 = Math.floor(Math.random() * 40) + 20; 
     const f2 = Math.floor(Math.random() * 40) + 20;
 
     if (currentStage === 1) {
-        document.getElementById('q-title').innerText = "ステージ1：着力点が同じ2力とつり合う力";
+        document.getElementById('q-title').innerText = "ステージ1：着力点が同じ2力とつり合う未知の力";
         const th = angles[Math.floor(Math.random() * angles.length)];
         const rad = th * Math.PI / 180;
         
-        const rSize = Math.sqrt(f1*f1 + f2*f2 + 2*f1*f2*Math.cos(rad));
-        const rx = f1 + f2 * Math.cos(rad);
-        const ry = f2 * Math.sin(rad);
+        // 残りの力の成分の和（この系を相殺するための未知の力の成分 Fn_cos, Fn_sin）
+        const Fn_cos = -(f1 + f2 * Math.cos(rad));
+        const Fn_sin = -(f2 * Math.sin(rad));
         
-        let eqAngle = Math.atan2(ry, rx) * 180 / Math.PI + 180;
-        if (eqAngle >= 360) eqAngle -= 360;
+        const ansSize = Math.sqrt(Fn_cos*Fn_cos + Fn_sin*Fn_sin);
+        let ansAngle = Math.atan2(Fn_sin, Fn_cos) * 180 / Math.PI;
+        while (ansAngle < 0) ansAngle += 360;
 
         currentQ = {
             isMulti: true,
             hasDist: false,
-            ansSize: Math.round(rSize * 10) / 10,
-            ansAngle: Math.round(eqAngle * 10) / 10,
-            text: `同一の着力点に働く2つの力 F1 = ${f1} N（水平右向き）、F2 = ${f2} N があります。2つの力のなす角が ${th}° であるとき、これら2力とつり合う力の ①大きさ と、②F1から反時計回りの向き をそれぞれ求めよ。`,
+            ansSize: Math.round(ansSize * 10) / 10,
+            ansAngle: Math.round(ansAngle * 10) / 10,
+            text: `同一の着力点に働く2つの力 F1 = ${f1} N（水平右向き）、F2 = ${f2} N があります。2つの力のなす角が ${th}° であるとき、これらと完全につり合う未知の力 Fn の ①大きさ と、②F1から反時計回りの向き θ をそれぞれ求めよ。`,
             comment: `【解説】\n` +
-                     `1. 【大きさ】つり合う力の大きさは合力Rと同じです。\n` +
-                     `   R = √(F1² + F2² + 2F1・F2・cosθ) = √(${f1}² + ${f2}² + 2・${f1}・${f2}・cos(${th}°)) ≒ ${Math.round(rSize * 10) / 10} N\n\n` +
-                     `2. 【向き】合力のX・Y成分から合力角度を算出し、180°足して逆向きにします。\n` +
-                     `   Fx = ${rx.toFixed(2)} N, Fy = ${ry.toFixed(2)} N\n` +
-                     `   合力角度 φ = tan⁻¹(Fy / Fx) = ${(Math.atan2(ry, rx)*180/Math.PI).toFixed(1)}°\n   つり合い方向 = φ + 180° = ${eqAngle.toFixed(1)}° ≒ ${Math.round(eqAngle * 10) / 10}°`
+                     `力のつり合い条件（∑X = 0, ∑Y = 0）より、未知の力 Fn の各成分を求めます。\n` +
+                     `・Fn_cosθ = -(F1 + F2・cos${th}°) = -(${f1} + ${f2}・cos${th}°) = ${Fn_cos.toFixed(2)} N\n` +
+                     `・Fn_sinθ = -(F2・sin${th}°) = -(${f2}・sin${th}°) = ${Fn_sin.toFixed(2)} N\n\n` +
+                     `これらより、大きさと向きを算出します：\n` +
+                     `① Fn = √((Fn_cosθ)² + (Fn_sinθ)²) ≒ ${Math.round(ansSize * 10) / 10} N\n` +
+                     `② θ = tan⁻¹(Fn_sinθ / Fn_cosθ) ≒ ${Math.round(ansAngle * 10) / 10}°`
         };
         drawStage1(f1, f2, th);
     } 
@@ -139,10 +140,10 @@ function generateQuestion() {
         
         const numForces = Math.floor(Math.random() * 3) + 3; 
         let forces = [];
-        let fx = 0, fy = 0;
+        let sum_cos = 0, sum_sin = 0;
         
         forces.push({ f: f1, th: 0 });
-        fx += f1;
+        sum_cos += f1;
         
         const availableAngles = [45, 90, 135, 180, 225, 270, 315];
         availableAngles.sort(() => Math.random() - 0.5);
@@ -151,32 +152,35 @@ function generateQuestion() {
             const f = Math.floor(Math.random() * 30) + 15;
             const th = availableAngles[i-1];
             forces.push({ f, th });
-            fx += f * Math.cos(th * Math.PI / 180);
-            fy += f * Math.sin(th * Math.PI / 180);
+            sum_cos += f * Math.cos(th * Math.PI / 180);
+            sum_sin += f * Math.sin(th * Math.PI / 180);
         }
         
-        const rSize = Math.sqrt(fx*fx + fy*fy);
-        let eqAngle = Math.atan2(fy, fx) * 180 / Math.PI + 180;
-        if (eqAngle >= 360) eqAngle -= 360;
+        const Fn_cos = -sum_cos;
+        const Fn_sin = -sum_sin;
+        
+        const ansSize = Math.sqrt(Fn_cos*Fn_cos + Fn_sin*Fn_sin);
+        let ansAngle = Math.atan2(Fn_sin, Fn_cos) * 180 / Math.PI;
+        while (ansAngle < 0) ansAngle += 360;
 
         let qText = `同一着力点から、以下の ${numForces} つの力が働いています。F1は水平右向きです。\n`;
         forces.forEach((f, idx) => {
             qText += `・F${idx+1} = ${f.f} N (F1から反時計回りに ${f.th}° 方向)\n`;
         });
-        qText += `これら全ての力とつり合う力の ①大きさ と、②F1から反時計回りの向き をそれぞれ求めよ。`;
+        qText += `これら全ての力と完全につり合う未知の力 Fn の ①大きさ と、②F1から反時計回りの向き θ をそれぞれ求めよ。`;
         
         currentQ = {
             isMulti: true,
             hasDist: false,
-            ansSize: Math.round(rSize * 10) / 10,
-            ansAngle: Math.round(eqAngle * 10) / 10,
+            ansSize: Math.round(ansSize * 10) / 10,
+            ansAngle: Math.round(ansAngle * 10) / 10,
             text: qText,
             comment: `【解説】\n` +
-                     `1. 各力のX・Y成分を合計して合力を求めます。\n` +
-                     `   Fx = ${fx.toFixed(2)} N, Fy = ${fy.toFixed(2)} N\n` +
-                     `   つり合う力の大きさ = √(Fx² + Fy²) ≒ ${Math.round(rSize * 10) / 10} N\n\n` +
-                     `2. 合力方向の真逆（+180°）がつり合う向きです。\n` +
-                     `   角度 = ${eqAngle.toFixed(1)}° ≒ ${Math.round(eqAngle * 10) / 10}°`
+                     `水平・鉛直それぞれのつり合い条件より：\n` +
+                     `・Fn_cosθ = -(残りの力のcos成分の和) = ${Fn_cos.toFixed(2)} N\n` +
+                     `・Fn_sinθ = -(残りの力のsin成分の和) = ${Fn_sin.toFixed(2)} N\n\n` +
+                     `① Fn = √((Fn_cosθ)² + (Fn_sinθ)²) ≒ ${Math.round(ansSize * 10) / 10} N\n` +
+                     `② θ = tan⁻¹(Fn_sinθ / Fn_cosθ) ≒ ${Math.round(ansAngle * 10) / 10}°`
         };
         drawStage2(forces);
     } 
@@ -205,40 +209,40 @@ function generateQuestion() {
     else if (currentStage === 4) {
         document.getElementById('q-title').innerText = "最終ステージ：着力点が異なる3力以上のつり合い";
         
-        // 力の数を3か4に制限
         const numForces = Math.floor(Math.random() * 2) + 3; 
         let forces = [];
-        let totalRx = 0, totalRy = 0, totalM = 0;
-        let qText = `座標平面上に、以下の ${numForces} つの力が働いています。原点はF1の着力点とします。\n`;
+        let sum_cos = 0, sum_sin = 0, totalM = 0;
+        let qText = `座標平面上に、以下の ${numForces} つの既知の力が働いています。原点はF1の着力点とします。\n`;
 
         for (let i = 0; i < numForces; i++) {
             let x = 0, y = 0, th = 0;
-            // F1は原点、かつ水平右向き(0度)に完全固定
             if (i > 0) {
                 x = Math.floor(Math.random() * 4) + 1; 
                 y = Math.floor(Math.random() * 4) - 2; 
-                // F2以降は全方位のランダム角度を割り振る
                 th = [30, 45, 60, 90, 120, 135, 150, 180, 210, 240, 270, 300, 330][Math.floor(Math.random() * 13)];
             }
             
             const f = Math.floor(Math.random() * 30) + 15; 
             const rad = th * Math.PI / 180;
             
-            totalRx += f * Math.cos(rad);
-            totalRy += f * Math.sin(rad);
+            sum_cos += f * Math.cos(rad);
+            sum_sin += f * Math.sin(rad);
             totalM += (x * f * Math.sin(rad) - y * f * Math.cos(rad));
             
             forces.push({id: i+1, f, th, x, y});
             qText += `・F${i+1} = ${f} N (着力点: (${x}, ${y})m, F1に対する角度: ${th}°)\n`;
         }
         
-        qText += `\nこの力系と完全につり合う（静止させる）ために追加すべき1つの力について、①大きさ、②F1に対する反時計回りの向き、③原点(F1着力点基準)からの作用線の最短距離をそれぞれ求めよ。`;
+        qText += `\nこの力系を完全に静止（つり合い）させるために導入すべき、もう1つの未知の力 Fn について、①大きさ、②F1に対する反時計回りの向き θ、③原点(F1着力点基準)からの作用線の最短距離 d をそれぞれ求めよ。`;
 
-        const ansSize = Math.sqrt(totalRx*totalRx + totalRy*totalRy);
-        let ansAngle = Math.atan2(totalRy, totalRx) * 180 / Math.PI + 180;
-        while (ansAngle >= 360) ansAngle -= 360;
+        const Fn_cos = -sum_cos;
+        const Fn_sin = -sum_sin;
+
+        const ansSize = Math.sqrt(Fn_cos*Fn_cos + Fn_sin*Fn_sin);
+        let ansAngle = Math.atan2(Fn_sin, Fn_cos) * 180 / Math.PI;
         while (ansAngle < 0) ansAngle += 360;
         
+        // モーメントのつり合い条件 ∑M = 0 から、未知の力が作るべきモーメントは -totalM
         const ansDist = Math.abs(totalM) / ansSize;
 
         currentQ = {
@@ -249,15 +253,16 @@ function generateQuestion() {
             ansDist: Math.round(ansDist * 10) / 10,
             text: qText,
             comment: `【解説】\n` +
-                     `一般平面力系を静止させるには、「並進力のつり合い」と「原点まわりのモーメントのつり合い」を同時に満たす必要があります。\n\n` +
-                     `1. 【大きさ】合力を相殺するため、大きさは合力Rと同じです。\n` +
-                     `   Fx = ${totalRx.toFixed(1)} N, Fy = ${totalRy.toFixed(1)} N\n` +
-                     `   R = √(Fx² + Fy²) ≒ ${Math.round(ansSize * 10) / 10} N\n\n` +
-                     `2. 【向き】合力の進行方向と真逆（180°反対方向）に向けます。\n` +
-                     `   合力角度 = ${(Math.atan2(totalRy, totalRx)*180/Math.PI).toFixed(1)}°\n` +
-                     `   つり合い方向 = 合力角度 + 180° = ${Math.round(ansAngle * 10) / 10}°\n\n` +
-                     `3. 【距離】元の一系が原点まわりに生み出すモーメントの総和 Mo = ${totalM.toFixed(1)} N・m を完全にゼロ（相殺）にするために、偶力を戻す形で作用線の位置を決定します。\n` +
-                     `   作用線の原点からの最短距離 d = |Mo| / R = ${Math.abs(totalM).toFixed(1)} / ${ansSize.toFixed(1)} ≒ ${Math.round(ansDist * 10) / 10} m`
+                     `一般平面力系のつり合い条件（∑X=0, ∑Y=0, ∑Mo=0）より、未知の力 Fn の性質を決定します。\n\n` +
+                     `1. 【並進力のつり合い】\n` +
+                     `   ・Fn_cosθ = -(残りの力のcos成分の和) = ${Fn_cos.toFixed(1)} N\n` +
+                     `   ・Fn_sinθ = -(残りの力のsin成分の和) = ${Fn_sin.toFixed(1)} N\n` +
+                     `   ① Fn = √((Fn_cosθ)² + (Fn_sinθ)²) ≒ ${Math.round(ansSize * 10) / 10} N\n` +
+                     `   ② θ = tan⁻¹(Fn_sinθ / Fn_cosθ) ≒ ${Math.round(ansAngle * 10) / 10}°\n\n` +
+                     `2. 【モーメントのつり合い】\n` +
+                     `   既知の力が原点まわりに作るモーメントの総和 Mo = ${totalM.toFixed(1)} N・m\n` +
+                     `   これをつり合わせるために必要な最短距離 d は以下の関係から求まります：\n` +
+                     `   ③ d = |Mo| / Fn = ${Math.abs(totalM).toFixed(1)} / ${ansSize.toFixed(1)} ≒ ${Math.round(ansDist * 10) / 10} m`
         };
         drawStage4(forces);
     }
@@ -303,15 +308,14 @@ function checkAnswer() {
             const uDist = parseFloat(document.getElementById('user-ans-dist').value);
             const checkDist = Math.abs(uDist - currentQ.ansDist) < 0.2;
             if (checkSize && checkAngle && checkDist) isCorrect = true;
-            comDiv.innerText = `【模範解答】\n①大きさ: ${currentQ.ansSize} N\n②向き: ${currentQ.ansAngle} °\n③距離: ${currentQ.ansDist} m\n\n${currentQ.comment}`;
+            comDiv.innerText = `【模範解答】\n①Fnの大きさ: ${currentQ.ansSize} N\n②向き θ: ${currentQ.ansAngle} °\n③距離 d: ${currentQ.ansDist} m\n\n${currentQ.comment}`;
         } else {
             if (checkSize && checkAngle) isCorrect = true;
-            comDiv.innerText = `【模範解答】\n①大きさ: ${currentQ.ansSize} N\n②向き: ${currentQ.ansAngle} °\n\n${currentQ.comment}`;
+            comDiv.innerText = `【模範解答】\n①Fnの大きさ: ${currentQ.ansSize} N\n②向き θ: ${currentQ.ansAngle} °\n\n${currentQ.comment}`;
         }
     } else {
         const userAns = parseFloat(document.getElementById('user-answer').value);
         let checkSimple = Math.abs(userAns - currentQ.ans) < 0.15;
-        if (isCorrect) checkSimple = true;
         if (checkSimple) isCorrect = true;
         comDiv.innerText = `【正解】: ${currentQ.ans}${document.getElementById('unit-label').innerText}\n\n${currentQ.comment}`;
     }
