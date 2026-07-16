@@ -280,11 +280,12 @@ function generateQuestion() {
         }
         document.getElementById('unit-label').innerText = "°";
     }
-    // --- ステージ3：直交分力 ---
+    // --- ステージ3：直交分力と成分からの角度逆算 ---
     else if (currentStage === 3) {
         document.getElementById('q-title').innerText = "ステージ3：直交分力と成分からの角度逆算";
         
         if (qMode === 0) {
+            // (既存通り：力 F と角度 θ から分力 Fx, Fy を求める問題。F1基準に固定しない)
             const F = Math.floor(Math.random() * 40) + 30; 
             const th = basicAngles[Math.floor(Math.random() * basicAngles.length)];
             const rad = th * Math.PI / 180;
@@ -308,6 +309,7 @@ function generateQuestion() {
             document.getElementById('unit-label').innerText = "N";
             setTimeout(() => { drawForceComponent(F, th); }, 50);
         } else {
+            // 角度の逆算問題（第2・第3象限＝マイナス成分を積極的に出現させる）
             const quadrant = Math.floor(Math.random() * 4) + 1; 
             let fx = Math.floor(Math.random() * 30) + 15;
             let fy = Math.floor(Math.random() * 30) + 15;
@@ -319,33 +321,59 @@ function generateQuestion() {
             let ansAngle = Math.atan2(fy, fx) * 180 / Math.PI;
             if (ansAngle < 0) { ansAngle += 360; } 
 
+            // 教育的な解説を作成
+            let stepText = ``;
+            if (fx < 0) {
+                stepText = `・注意：Fxが負（Fx = ${fx} N）のため、この力は「第${quadrant}象限」を向いています。\n` +
+                           `・電卓でそのまま tan⁻¹(${fy} / ${fx}) を計算すると、主値（${(Math.atan(fy/fx)*180/Math.PI).toFixed(1)}°）が出力されてしまいます。\n` +
+                           `・Fx < 0（第2, 3象限）のときは、この電卓値に「180°」を足して補正する必要があります！\n` +
+                           ` θ = tan⁻¹(Fy / Fx) + 180° = ${(Math.atan(fy/fx)*180/Math.PI).toFixed(1)}° + 180° ≒ ${ansAngle.toFixed(1)}°`;
+            } else if (fy < 0) {
+                stepText = `・注意：Fyが負（Fy = ${fy} N）のため、この力は「第4象限」を向いています。\n` +
+                           `・電卓で tan⁻¹(${fy} / ${fx}) を計算すると負の角度（${(Math.atan(fy/fx)*180/Math.PI).toFixed(1)}°）が出ます。\n` +
+                           `・x軸正方向から反時計回りの正の角度にするため、360°を加えて補正します。\n` +
+                           ` θ = ${(Math.atan(fy/fx)*180/Math.PI).toFixed(1)}° + 360° ≒ ${ansAngle.toFixed(1)}°`;
+            } else {
+                stepText = `・Fx, Fyともに正（第1象限）のため、電卓の値をそのまま使用します。\n` +
+                           ` θ = tan⁻¹(${fy} / ${fx}) ≒ ${ansAngle.toFixed(1)}°`;
+            }
+
             currentQ = {
                 ans: Math.round(ansAngle * 10) / 10,
                 text: `力ベクトルの水平成分が Fx = ${fx} N、鉛直成分が Fy = ${fy} N であるとき、x軸正方向（右向き）から反時計回りに測った全体の向き θ (°) を求めよ。`,
-                comment: `【解説】\n・鋭角基準 θ_ref = tan⁻¹(|Fy / Fx|) ≒ ${Math.abs(Math.atan2(fy, fx)*180/Math.PI).toFixed(1)}°\n` +
-                         `・成分符号(Fx: ${fx}, Fy: ${fy}) より第 ${quadrant} 象限を向いています。\n` +
-                         `・よって、求める反時計回り角度 θ = ${ansAngle.toFixed(2)} ≒ ${Math.round(ansAngle * 10) / 10}°`
+                comment: `【解説】\n` + stepText + `\n\nよって、求める角度 θ = ${ansAngle.toFixed(2)} ≒ ${Math.round(ansAngle * 10) / 10}°`
             };
             document.getElementById('unit-label').innerText = "°";
             setTimeout(() => { drawQuadrantForce(fx, fy); }, 50);
         }
     }
-    // --- ステージ4：力の等価分解の基礎 ---
+// --- ステージ4：力の等価分解の基礎 ---
     else if (currentStage === 4) {
         document.getElementById('q-title').innerText = "ステージ4：力の合成と任意方向への分解の基礎";
 
         if (qMode === 0) {
-            const th = [30, 45, 60, 90, 120][Math.floor(Math.random() * 5)];
+            // 鈍角（120°, 135°, 150°）も選択肢に含める
+            const th = [30, 45, 60, 90, 120, 135, 150][Math.floor(Math.random() * 7)];
             const rad = th * Math.PI / 180;
             const rSize = Math.sqrt(f1*f1 + f2*f2 + 2*f1*f2*Math.cos(rad));
+            
+            let cosText = `cos(${th}°) = ${Math.cos(rad).toFixed(4)}`;
+            if (th > 90) {
+                cosText += ` （※鈍角なのでマイナス値になります！）`;
+            }
+
             currentQ = {
                 ans: Math.round(rSize * 10) / 10,
-                text: `同一の着力点に働く2つの力 F1 = ${f1} N（水平方向）、F2 = ${f2} N（なす角 θ = ${th}°）の合力 R の「大きさ」を求めよ。`,
-                comment: `【解説】\n余弦定理（力の平行四辺形の対角線）より：\nR = √(F1² + F2² + 2F1・F2・cosθ)\n= √(${f1}² + ${f2}² + 2・${f1}・${f2}・cos(${th}°))\n= ${rSize.toFixed(2)} ≒ ${Math.round(rSize * 10) / 10} N`
+                text: `同一の着力点に働く2つの力 F1 = ${f1} N（水平方向/x軸正方向）、F2 = ${f2} N（なす角 θ = ${th}°）の合力 R の「大きさ」を求めよ。`,
+                comment: `【解説】\n余弦定理（力の平行四辺形の対角線公式）より：\nR = √(F1² + F2² + 2・F1・F2・cosθ)\n` +
+                         `ここで、${cosText} を代入します。\n\n` +
+                         `R = √(${f1}² + ${f2}² + 2・${f1}・${f2}・(${Math.cos(rad).toFixed(4)}))\n` +
+                         `  = ${rSize.toFixed(2)} ≒ ${Math.round(rSize * 10) / 10} N`
             };
             document.getElementById('unit-label').innerText = "N";
             setTimeout(() => { drawStage1(f1, f2, th, true); }, 50);
         } else {
+            // （既存のFa, Fbへの任意分解：このままでOK）
             const F = Math.floor(Math.random() * 30) + 40; 
             const alpha = 30; 
             const beta = 45;  
@@ -366,7 +394,7 @@ function generateQuestion() {
             document.getElementById('unit-label').innerText = "N";
             setTimeout(() => { drawArbitraryDecomp(F, alpha, beta); }, 50);
         }
-    } 
+    }
     // --- ステージ5：3つ以上の力の合成 ---
     else if (currentStage === 5) {
         document.getElementById('q-title').innerText = "ステージ5：3つ以上の力の合成（同一着力点）";
