@@ -20,46 +20,68 @@
         .hidden { display: none; }
         .multi-input-group { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; }
         .multi-input-group div { margin-bottom: 8px; }
+
+        /* スタート画面用スタイル */
+        .start-menu { text-align: center; padding: 30px 10px; }
+        .start-menu h2 { margin-bottom: 30px; color: #333; }
+        .menu-btn { display: block; width: 80%; max-width: 300px; margin: 15px auto; padding: 15px; font-size: 18px; font-weight: bold; border-radius: 6px; }
+        .keyword-input-area { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e0e0e0; }
+        .keyword-input-area input { width: 180px; text-align: center; font-family: monospace; font-size: 18px; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-    <h2>工業力学 計算ノック（一般平面力系・全9ステージ）</h2>
-    
-    <div class="status-panel">
-        <span id="status-stage">ステージ: 1 / 9</span>
-        <span id="status-combo" class="combo-box">現在: 0 / 5 連続正解中 🔥</span>
+    <div id="start-screen" class="card start-menu">
+        <h2>工業力学 計算ノック<br><span style="font-size: 16px; color:#666;">（一般平面力系・全9ステージ）</span></h2>
+        <button class="menu-btn" onclick="startGame(1)">最初から始める 🚀</button>
+        <button class="menu-btn" style="background: #6c757d;" onclick="showKeywordInput()">キーワードを入力 🔑</button>
+
+        <div id="keyword-input-wrapper" class="keyword-input-area hidden">
+            <p style="font-size: 14px; font-weight: bold; color: #333; margin-bottom: 10px;">通過キーワードを入力してください</p>
+            <input type="text" id="input-keyword" placeholder="000XX000" maxlength="8">
+            <button onclick="submitKeyword()" style="background: #28a745; margin-left: 5px;">決定</button>
+            <div id="keyword-error" class="alert danger hidden" style="font-size: 13px; padding: 5px; margin-top: 10px;"></div>
+        </div>
     </div>
 
-    <div id="game-zone" class="card">
-        <h3 id="q-title">ステージ1：三角関数の基本</h3>
+    <div id="game-main-area" class="hidden">
+        <h2>工業力学 計算ノック（一般平面力系・全9ステージ）</h2>
         
-        <canvas id="vector-canvas" width="450" height="450"></canvas>
-
-        <p id="q-text" style="font-size: 18px; font-weight: bold; color: #333;"></p>
-        <p style="font-size: 12px; color: #666;">※小数点以下第2位を四捨五入し、第1位まで求めてください（例: 23.4）</p>
-        
-        <div id="input-zone">
-            <div id="single-input-wrapper">
-                <label id="input-label">答：</label>
-                <input type="number" id="user-answer" step="0.1" placeholder="0.0">
-                <span id="unit-label">m</span>
-            </div>
-            
-            <div id="multi-input-wrapper" class="multi-input-group hidden">
-                <div><strong>① 合力の大きさ：</strong><input type="number" id="user-ans-size" step="0.1" placeholder="0.0"> N</div>
-                <div><strong>② 全体の向き（右向きx軸から反時計回り）：</strong><input type="number" id="user-ans-angle" step="0.1" placeholder="0.0"> °</div>
-                <div><strong>③ 原点(0,0)からの最短距離：</strong><input type="number" id="user-ans-dist" step="0.1" placeholder="0.0"> m</div>
-            </div>
-            
-            <button id="submit-btn" onclick="checkAnswer()">回答する</button>
+        <div class="status-panel">
+            <span id="status-stage">ステージ: 1 / 9</span>
+            <span id="status-combo" class="combo-box">現在: 0 / 5 連続正解中 🔥</span>
         </div>
 
-        <div id="result-message" class="alert hidden"></div>
-        <div id="keyword-zone" class="keyword-box hidden"></div>
-        <div id="commentary-zone" class="commentary hidden"></div>
-        
-        <button id="next-btn" class="hidden" onclick="nextQuestion()" style="background: #28a745; margin-top: 15px;">次の問題へ</button>
+        <div id="game-zone" class="card">
+            <h3 id="q-title">ステージ1：三角関数の基本</h3>
+            
+            <canvas id="vector-canvas" width="450" height="450"></canvas>
+
+            <p id="q-text" style="font-size: 18px; font-weight: bold; color: #333;"></p>
+            <p style="font-size: 12px; color: #666;">※小数点以下第2位を四捨五入し、第1位まで求めてください（例: 23.4）</p>
+            
+            <div id="input-zone">
+                <div id="single-input-wrapper">
+                    <label id="input-label">答：</label>
+                    <input type="number" id="user-answer" step="0.1" placeholder="0.0">
+                    <span id="unit-label">m</span>
+                </div>
+                
+                <div id="multi-input-wrapper" class="multi-input-group hidden">
+                    <div><strong>① 合力の大きさ：</strong><input type="number" id="user-ans-size" step="0.1" placeholder="0.0"> N</div>
+                    <div><strong>② 全体の向き（右向きx軸から反時計回り）：</strong><input type="number" id="user-ans-angle" step="0.1" placeholder="0.0"> °</div>
+                    <div><strong>③ 原点(0,0)からの最短距離：</strong><input type="number" id="user-ans-dist" step="0.1" placeholder="0.0"> m</div>
+                </div>
+                
+                <button id="submit-btn" onclick="checkAnswer()">回答する</button>
+            </div>
+
+            <div id="result-message" class="alert hidden"></div>
+            <div id="keyword-zone" class="keyword-box hidden"></div>
+            <div id="commentary-zone" class="commentary hidden"></div>
+            
+            <button id="next-btn" class="hidden" onclick="nextQuestion()" style="background: #28a745; margin-top: 15px;">次の問題へ</button>
+        </div>
     </div>
 
 <script>
@@ -69,9 +91,73 @@ let totalAttempts = 0;
 let currentQ = {};
 const basicAngles = [30, 45, 60]; 
 
+// 起動時はゲームを開始せず、スタート画面のみを表示
 window.onload = function() {
-    generateQuestion();
+    // 起動時の初期化。何もしない（スタート画面のボタン押下を待つ）
 };
+
+// キーワード入力フォームの表示切り替え
+function showKeywordInput() {
+    const wrapper = document.getElementById('keyword-input-wrapper');
+    wrapper.classList.remove('hidden');
+    document.getElementById('input-keyword').focus();
+}
+
+// キーワードの解読およびバリデーション
+function submitKeyword() {
+    const input = document.getElementById('input-keyword').value.trim().toUpperCase();
+    const errorDiv = document.getElementById('keyword-error');
+    errorDiv.classList.add('hidden');
+
+    if (input.length !== 8) {
+        errorDiv.innerText = "キーワードは8文字の半角英数字です。";
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    // フォーマットチェック (例: 015AB206 -> 数字3桁、英字2桁、数字3桁)
+    const pattern = /^(\d{3})([A-Z]{2})(\d{3})$/;
+    const match = input.match(pattern);
+
+    if (!match) {
+        errorDiv.innerText = "キーワードの形式が正しくありません。";
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    const attemptsPart = parseInt(match[1], 10); // 挑戦回数の復元
+    const checkNum = parseInt(match[3], 10);      // ステージ検証用数値
+
+    // ステージを特定するデコードアルゴリズム (checkNum % 9 = ステージ番号)
+    const remainder = checkNum % 9;
+    let targetStage = remainder === 0 ? 9 : remainder;
+
+    // バリデーション：
+    // ステージ番号は 1〜8 までの通過キーワードであるべき（9クリア時は終了のため）
+    if (targetStage < 1 || targetStage > 8) {
+        errorDiv.innerText = "無効なキーワード、または最終ステージ用のキーワードです。";
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    // キーワードが正常な場合、そのステージをクリアしたとみなし、「次のステージ」からゲームを開始する
+    const nextStage = targetStage + 1;
+    totalAttempts = attemptsPart; // 挑戦回数の状態をキーワードから引き継ぐ
+    startGame(nextStage);
+}
+
+// ゲーム画面の起動
+function startGame(stage) {
+    currentStage = stage;
+    comboCount = 0;
+    
+    // 画面切り替え
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-main-area').classList.remove('hidden');
+    
+    // 問題生成開始
+    generateQuestion();
+}
 
 function generateQuestion() {
     document.getElementById('result-message').classList.add('hidden');
@@ -153,7 +239,7 @@ function generateQuestion() {
         }
         document.getElementById('unit-label').innerText = "m";
     } 
-    // --- ステージ2：逆三角関数（arctan, arcsin, arccos） ---
+    // --- ステージ2：逆三角関数 ---
     else if (currentStage === 2) {
         document.getElementById('q-title').innerText = "ステージ2：逆三角関数の計算（目標5連続正解！）";
         const pattern = Math.floor(Math.random() * 3); 
@@ -161,7 +247,6 @@ function generateQuestion() {
         const rad = th * Math.PI / 180;
 
         if (pattern === 0) {
-            // arctan (底辺と高さ)
             const x = Math.floor(Math.random() * 15) + 10; 
             const y = Math.round((x * Math.tan(rad)) * 10) / 10; 
             const ansAngle = Math.atan2(y, x) * 180 / Math.PI;
@@ -173,8 +258,7 @@ function generateQuestion() {
             const mockL = Math.sqrt(x*x + y*y);
             setTimeout(() => { drawTriangle(mockL, Math.round(ansAngle), 'arctan', '', `${x} m`, `${y} m`); }, 50);
         } else if (pattern === 1) {
-            // arcsin (斜辺と高さ)
-            const L = L = Math.floor(Math.random() * 20) + 15;
+            const L = Math.floor(Math.random() * 20) + 15;
             const y = Math.round((L * Math.sin(rad)) * 10) / 10;
             const ansAngle = Math.asin(y / L) * 180 / Math.PI;
             currentQ = {
@@ -184,7 +268,6 @@ function generateQuestion() {
             };
             setTimeout(() => { drawTriangle(L, Math.round(ansAngle), 'arcsin', L, '', `${y} m`); }, 50);
         } else {
-            // arccos (斜辺と底辺)
             const L = Math.floor(Math.random() * 20) + 15;
             const x = Math.round((L * Math.cos(rad)) * 10) / 10;
             const ansAngle = Math.acos(x / L) * 180 / Math.PI;
@@ -197,7 +280,7 @@ function generateQuestion() {
         }
         document.getElementById('unit-label').innerText = "°";
     }
-    // --- ステージ3：直交分力（順変換・逆変換・象限判定） ---
+    // --- ステージ3：直交分力 ---
     else if (currentStage === 3) {
         document.getElementById('q-title').innerText = "ステージ3：直交分力と成分からの角度逆算";
         
@@ -247,7 +330,7 @@ function generateQuestion() {
             setTimeout(() => { drawQuadrantForce(fx, fy); }, 50);
         }
     }
-    // --- ステージ4：力の構成分解の基礎（合成・任意分解） ---
+    // --- ステージ4：力の等価分解の基礎 ---
     else if (currentStage === 4) {
         document.getElementById('q-title').innerText = "ステージ4：力の合成と任意方向への分解の基礎";
 
@@ -284,7 +367,7 @@ function generateQuestion() {
             setTimeout(() => { drawArbitraryDecomp(F, alpha, beta); }, 50);
         }
     } 
-    // --- ステージ5：3つ以上の力の合成（最大4力） ---
+    // --- ステージ5：3つ以上の力の合成 ---
     else if (currentStage === 5) {
         document.getElementById('q-title').innerText = "ステージ5：3つ以上の力の合成（同一着力点）";
         const th2 = 90; const th3 = 120; const th4 = 150;
@@ -307,7 +390,7 @@ function generateQuestion() {
         document.getElementById('unit-label').innerText = "N";
         setTimeout(() => { drawStage2_4Forces(f1, f2, f3, f4); }, 50);
     } 
-    // --- ステージ6：平行力の合成（異なる2つの着力点：内分・外分） ---
+    // --- ステージ6：平行力の合成 ---
     else if (currentStage === 6) {
         document.getElementById('q-title').innerText = "ステージ6：平行力の合成（異なる2つの着力点）";
         const distance = Math.floor(Math.random() * 5) + 3; 
@@ -343,7 +426,7 @@ function generateQuestion() {
         document.getElementById('unit-label').innerText = "m";
         setTimeout(() => { drawParallelTwo(fA, fB, distance, isSameDirection); }, 50);
     }
-    // --- ステージ7：力の等価な置き換え（力⇔力＋偶力：双方向） ---
+    // --- ステージ7：力の等価な置き換え ---
     else if (currentStage === 7) {
         document.getElementById('q-title').innerText = "ステージ7：力の等価な置き換え（力 ⇄ 力＋偶力）";
         
@@ -384,7 +467,7 @@ function generateQuestion() {
             setTimeout(() => { drawEquivStep2(f, Mo); }, 50);
         }
     }
-    // --- ステージ8：平行力の合成（着力点の異なる3つ以上の平行力） ---
+    // --- ステージ8：平行力の合成 ---
     else if (currentStage === 8) {
         document.getElementById('q-title').innerText = "ステージ8：平行力の合成（3つ以上の異なる着力点）";
         const x1 = 1; const x2 = 3; const x3 = 5;
