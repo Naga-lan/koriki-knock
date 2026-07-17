@@ -21,7 +21,6 @@
         .multi-input-group { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; }
         .multi-input-group div { margin-bottom: 8px; }
 
-        /* スタート画面用スタイル */
         .start-menu { text-align: center; padding: 30px 10px; }
         .start-menu h2 { margin-bottom: 30px; color: #333; }
         .menu-btn { display: block; width: 80%; max-width: 300px; margin: 15px auto; padding: 15px; font-size: 18px; font-weight: bold; border-radius: 6px; }
@@ -90,20 +89,17 @@ let comboCount = 0;
 let totalAttempts = 0; 
 let currentQ = {};
 const basicAngles = [30, 45, 60]; 
+const extendedAngles = [15, 30, 45, 60, 75]; // stage2およびstage4用（15度刻み）
 
-// 起動時はゲームを開始せず、スタート画面のみを表示
 window.onload = function() {
-    // 起動時の初期化。何もしない（スタート画面のボタン押下を待つ）
 };
 
-// キーワード入力フォームの表示切り替え
 function showKeywordInput() {
     const wrapper = document.getElementById('keyword-input-wrapper');
     wrapper.classList.remove('hidden');
     document.getElementById('input-keyword').focus();
 }
 
-// キーワードの解読およびバリデーション
 function submitKeyword() {
     const input = document.getElementById('input-keyword').value.trim().toUpperCase();
     const errorDiv = document.getElementById('keyword-error');
@@ -115,7 +111,6 @@ function submitKeyword() {
         return;
     }
 
-    // フォーマットチェック (例: 015AB206 -> 数字3桁、英字2桁、数字3桁)
     const pattern = /^(\d{3})([A-Z]{2})(\d{3})$/;
     const match = input.match(pattern);
 
@@ -125,37 +120,30 @@ function submitKeyword() {
         return;
     }
 
-    const attemptsPart = parseInt(match[1], 10); // 挑戦回数の復元
-    const checkNum = parseInt(match[3], 10);      // ステージ検証用数値
+    const attemptsPart = parseInt(match[1], 10); 
+    const checkNum = parseInt(match[3], 10);      
 
-    // ステージを特定するデコードアルゴリズム (checkNum % 9 = ステージ番号)
     const remainder = checkNum % 9;
     let targetStage = remainder === 0 ? 9 : remainder;
 
-    // バリデーション：
-    // ステージ番号は 1〜8 までの通過キーワードであるべき（9クリア時は終了のため）
     if (targetStage < 1 || targetStage > 8) {
         errorDiv.innerText = "無効なキーワード、または最終ステージ用のキーワードです。";
         errorDiv.classList.remove('hidden');
         return;
     }
 
-    // キーワードが正常な場合、そのステージをクリアしたとみなし、「次のステージ」からゲームを開始する
     const nextStage = targetStage + 1;
-    totalAttempts = attemptsPart; // 挑戦回数の状態をキーワードから引き継ぐ
+    totalAttempts = attemptsPart; 
     startGame(nextStage);
 }
 
-// ゲーム画面の起動
 function startGame(stage) {
     currentStage = stage;
     comboCount = 0;
     
-    // 画面切り替え
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('game-main-area').classList.remove('hidden');
     
-    // 問題生成開始
     generateQuestion();
 }
 
@@ -239,11 +227,11 @@ function generateQuestion() {
         }
         document.getElementById('unit-label').innerText = "m";
     } 
-    // --- ステージ2：逆三角関数 ---
+    // --- ステージ2：逆三角関数（15度刻みバリエーション拡張） ---
     else if (currentStage === 2) {
         document.getElementById('q-title').innerText = "ステージ2：逆三角関数の計算（目標5連続正解！）";
         const pattern = Math.floor(Math.random() * 3); 
-        const th = basicAngles[Math.floor(Math.random() * basicAngles.length)];
+        const th = extendedAngles[Math.floor(Math.random() * extendedAngles.length)]; // 15度刻み
         const rad = th * Math.PI / 180;
 
         if (pattern === 0) {
@@ -280,12 +268,11 @@ function generateQuestion() {
         }
         document.getElementById('unit-label').innerText = "°";
     }
-    // --- ステージ3：直交分力と成分からの角度逆算 ---
+    // --- ステージ3：直交分力と成分からの角度逆算（マイナス角度許容） ---
     else if (currentStage === 3) {
         document.getElementById('q-title').innerText = "ステージ3：直交分力と成分からの角度逆算";
         
         if (qMode === 0) {
-            // (既存通り：力 F と角度 θ から分力 Fx, Fy を求める問題。F1基準に固定しない)
             const F = Math.floor(Math.random() * 40) + 30; 
             const th = basicAngles[Math.floor(Math.random() * basicAngles.length)];
             const rad = th * Math.PI / 180;
@@ -309,7 +296,6 @@ function generateQuestion() {
             document.getElementById('unit-label').innerText = "N";
             setTimeout(() => { drawForceComponent(F, th); }, 50);
         } else {
-            // 角度の逆算問題（第2・第3象限＝マイナス成分を積極的に出現させる）
             const quadrant = Math.floor(Math.random() * 4) + 1; 
             let fx = Math.floor(Math.random() * 30) + 15;
             let fy = Math.floor(Math.random() * 30) + 15;
@@ -319,9 +305,13 @@ function generateQuestion() {
             else if (quadrant === 4) { fy = -fy; }
 
             let ansAngle = Math.atan2(fy, fx) * 180 / Math.PI;
-            if (ansAngle < 0) { ansAngle += 360; } 
+            
+            // 第4象限（負の角度）の許容処理用にフラグを設定
+            let isQuadrant4 = (quadrant === 4);
+            let alternativeAngle = ansAngle; // 負の角度のまま保持（例: -30°）
 
-            // 教育的な解説を作成
+            if (ansAngle < 0) { ansAngle += 360; } // 標準の正表記（例: 330°）
+
             let stepText = ``;
             if (fx < 0) {
                 stepText = `・注意：Fxが負（Fx = ${fx} N）のため、この力は「第${quadrant}象限」を向いています。\n` +
@@ -330,9 +320,9 @@ function generateQuestion() {
                            ` θ = tan⁻¹(Fy / Fx) + 180° = ${(Math.atan(fy/fx)*180/Math.PI).toFixed(1)}° + 180° ≒ ${ansAngle.toFixed(1)}°`;
             } else if (fy < 0) {
                 stepText = `・注意：Fyが負（Fy = ${fy} N）のため、この力は「第4象限」を向いています。\n` +
-                           `・電卓で tan⁻¹(${fy} / ${fx}) を計算すると負の角度（${(Math.atan(fy/fx)*180/Math.PI).toFixed(1)}°）が出ます。\n` +
-                           `・x軸正方向から反時計回りの正の角度にするため、360°を加えて補正します。\n` +
-                           ` θ = ${(Math.atan(fy/fx)*180/Math.PI).toFixed(1)}° + 360° ≒ ${ansAngle.toFixed(1)}°`;
+                           `・電卓で tan⁻¹(${fy} / ${fx}) を計算すると負の角度（${alternativeAngle.toFixed(1)}°）が出ます。\n` +
+                           `・本問題では、反時計回りの正の角度（${ansAngle.toFixed(1)}°）のほか、時計回りの負の角度（${alternativeAngle.toFixed(1)}°）での解答もOKとしています。\n` +
+                           ` θ = ${(Math.atan(fy/fx)*180/Math.PI).toFixed(1)}°`;
             } else {
                 stepText = `・Fx, Fyともに正（第1象限）のため、電卓の値をそのまま使用します。\n` +
                            ` θ = tan⁻¹(${fy} / ${fx}) ≒ ${ansAngle.toFixed(1)}°`;
@@ -340,19 +330,20 @@ function generateQuestion() {
 
             currentQ = {
                 ans: Math.round(ansAngle * 10) / 10,
-                text: `力ベクトルの水平成分が Fx = ${fx} N、鉛直成分が Fy = ${fy} N であるとき、x軸正方向（右向き）から反時計回りに測った全体の向き θ (°) を求めよ。`,
-                comment: `【解説】\n` + stepText + `\n\nよって、求める角度 θ = ${ansAngle.toFixed(2)} ≒ ${Math.round(ansAngle * 10) / 10}°`
+                isQuadrant4: isQuadrant4,
+                altAns: Math.round(alternativeAngle * 10) / 10,
+                text: `力ベクトルの水平成分が Fx = ${fx} N、鉛直成分が Fy = ${fy} N であるとき、右向きx軸から測った全体の向き θ (°) を求めよ。(※第4象限の場合はマイナスの角度表記でも正解となります)`,
+                comment: `【解説】\n` + stepText + `\n\nよって、求める角度 θ = ${ansAngle.toFixed(1)}° （または ${alternativeAngle.toFixed(1)}°）`
             };
             document.getElementById('unit-label').innerText = "°";
             setTimeout(() => { drawQuadrantForce(fx, fy); }, 50);
         }
     }
-// --- ステージ4：力の等価分解の基礎 ---
+    // --- ステージ4：力の等価分解の基礎（角度バリエーション追加） ---
     else if (currentStage === 4) {
         document.getElementById('q-title').innerText = "ステージ4：力の合成と任意方向への分解の基礎";
 
         if (qMode === 0) {
-            // 鈍角（120°, 135°, 150°）も選択肢に含める
             const th = [30, 45, 60, 90, 120, 135, 150][Math.floor(Math.random() * 7)];
             const rad = th * Math.PI / 180;
             const rSize = Math.sqrt(f1*f1 + f2*f2 + 2*f1*f2*Math.cos(rad));
@@ -373,10 +364,11 @@ function generateQuestion() {
             document.getElementById('unit-label').innerText = "N";
             setTimeout(() => { drawStage1(f1, f2, th, true); }, 50);
         } else {
-            // （既存のFa, Fbへの任意分解：このままでOK）
+            // 分解の角度をランダムに選定（15度刻みの組み合わせでバリエーション化）
+            const alpha = extendedAngles[Math.floor(Math.random() * extendedAngles.length)]; 
+            const beta = extendedAngles[Math.floor(Math.random() * extendedAngles.length)];  
+            
             const F = Math.floor(Math.random() * 30) + 40; 
-            const alpha = 30; 
-            const beta = 45;  
             const radA = alpha * Math.PI / 180;
             const radB = beta * Math.PI / 180;
             const gamma = 180 - (alpha + beta);
@@ -385,40 +377,65 @@ function generateQuestion() {
             
             currentQ = {
                 ans: Math.round(Fa * 10) / 10,
-                text: `大きさ F = ${F} N の力を、これと反時計回りに 30° なす直線 a 方向と、時計回りに 45° なす直線 b 方向の2成分に分解する。このときの a 方向の分力 Fa (N) の大きさを求めよ。`,
-                comment: `【解説】\n力の三角形（平行四辺形の半分）を作ると、角は 30°, 45°, 105°（= 180°-30°-45°）となります。\n` +
+                text: `大きさ F = ${F} N の力を、これと反時計回りに ${alpha}° なす直線 a方向と、時計回りに ${beta}° なす直線 b 方向の2成分に分解する。このときの a 方向の分力 Fa (N) の大きさを求めよ。`,
+                comment: `【解説】\n力の三角形（平行四辺形の半分）を作ると、内角は ${alpha}°, ${beta}°, ${gamma}°（= 180°-${alpha}°-${beta}°）となります。\n` +
                          `正弦定理を適用すると：\n` +
-                         `Fa / sin(45°) = F / sin(105°)\n` +
-                         `Fa = ${F} ・ sin(45°) / sin(105°) = ${F} ・ 0.7071 / 0.9659 ≒ ${Fa.toFixed(2)} ≒ ${Math.round(Fa * 10) / 10} N`
+                         `Fa / sin(${beta}°) = F / sin(${gamma}°)\n` +
+                         `Fa = ${F} ・ sin(${beta}°) / sin(${gamma}°) ≒ ${Fa.toFixed(2)} ≒ ${Math.round(Fa * 10) / 10} N`
                 };
             document.getElementById('unit-label').innerText = "N";
             setTimeout(() => { drawArbitraryDecomp(F, alpha, beta); }, 50);
         }
     }
-    // --- ステージ5：3つ以上の力の合成 ---
+    // --- ステージ5：3つまたは4つの力の合成（バリエーション追加） ---
     else if (currentStage === 5) {
         document.getElementById('q-title').innerText = "ステージ5：3つ以上の力の合成（同一着力点）";
-        const th2 = 90; const th3 = 120; const th4 = 150;
-        const rad2 = th2 * Math.PI / 180;
-        const rad3 = th3 * Math.PI / 180;
-        const rad4 = th4 * Math.PI / 180;
         
-        const fx = f1 + f2 * Math.cos(rad2) + f3 * Math.cos(rad3) + f4 * Math.cos(rad4);
-        const fy = 0 + f2 * Math.sin(rad2) + f3 * Math.sin(rad3) + f4 * Math.sin(rad4);
-        const rSize = Math.sqrt(fx*fx + fy*fy);
+        // 3力パターンか4力パターンかをランダム決定
+        const is3Forces = Math.random() < 0.5;
 
-        currentQ = {
-            ans: Math.round(rSize * 10) / 10,
-            text: `同一着力点から、0°方向に F1 = ${f1} N、90°方向に F2 = ${f2} N、120°方向に F3 = ${f3} N、150°方向に F4 = ${f4} N が働いています。合力 R の「大きさ」を求めよ。`,
-            comment: `【解説】\n各力の直交成分を合計します：\n` +
-                     `Fx = ${f1} + ${f2}cos(90°) + ${f3}cos(120°) + ${f4}cos(150°) = ${fx.toFixed(2)} N\n` +
-                     `Fy = 0 + ${f2}sin(90°) + ${f3}sin(120°) + ${f4}sin(150°) = ${fy.toFixed(2)} N\n` +
-                     `R = √(Fx² + Fy²) = ${rSize.toFixed(2)} ≒ ${Math.round(rSize * 10) / 10} N`
-        };
-        document.getElementById('unit-label').innerText = "N";
-        setTimeout(() => { drawStage2_4Forces(f1, f2, f3, f4); }, 50);
+        if (is3Forces) {
+            const th2 = 60; const th3 = 120;
+            const rad2 = th2 * Math.PI / 180;
+            const rad3 = th3 * Math.PI / 180;
+            
+            const fx = f1 + f2 * Math.cos(rad2) + f3 * Math.cos(rad3);
+            const fy = 0 + f2 * Math.sin(rad2) + f3 * Math.sin(rad3);
+            const rSize = Math.sqrt(fx*fx + fy*fy);
+
+            currentQ = {
+                ans: Math.round(rSize * 10) / 10,
+                text: `同一着力点から、0°方向に F1 = ${f1} N、${th2}°方向に F2 = ${f2} N、${th3}°方向に F3 = ${f3} N の3つの力が働いています。合力 R の「大きさ」を求めよ。`,
+                comment: `【解説】\n各力の直交成分を合計します：\n` +
+                         `Fx = ${f1} + ${f2}cos(${th2}°) + ${f3}cos(${th3}°) = ${fx.toFixed(2)} N\n` +
+                         `Fy = 0 + ${f2}sin(${th2}°) + ${f3}sin(${th3}°) = ${fy.toFixed(2)} N\n` +
+                         `R = √(Fx² + Fy²) = ${rSize.toFixed(2)} ≒ ${Math.round(rSize * 10) / 10} N`
+            };
+            document.getElementById('unit-label').innerText = "N";
+            setTimeout(() => { drawStage2_3Forces(f1, f2, f3, th2, th3); }, 50);
+        } else {
+            const th2 = 90; const th3 = 120; const th4 = 150;
+            const rad2 = th2 * Math.PI / 180;
+            const rad3 = th3 * Math.PI / 180;
+            const rad4 = th4 * Math.PI / 180;
+            
+            const fx = f1 + f2 * Math.cos(rad2) + f3 * Math.cos(rad3) + f4 * Math.cos(rad4);
+            const fy = 0 + f2 * Math.sin(rad2) + f3 * Math.sin(rad3) + f4 * Math.sin(rad4);
+            const rSize = Math.sqrt(fx*fx + fy*fy);
+
+            currentQ = {
+                ans: Math.round(rSize * 10) / 10,
+                text: `同一着力点から、0°方向に F1 = ${f1} N、90°方向に F2 = ${f2} N、120°方向に F3 = ${f3} N、150°方向に F4 = ${f4} N の4つのつの力が働いています。合力 R の「大きさ」を求めよ。`,
+                comment: `【解説】\n各力の直交成分を合計します：\n` +
+                         `Fx = ${f1} + ${f2}cos(90°) + ${f3}cos(120°) + ${f4}cos(150°) = ${fx.toFixed(2)} N\n` +
+                         `Fy = 0 + ${f2}sin(90°) + ${f3}sin(120°) + ${f4}sin(150°) = ${fy.toFixed(2)} N\n` +
+                         `R = √(Fx² + Fy²) = ${rSize.toFixed(2)} ≒ ${Math.round(rSize * 10) / 10} N`
+            };
+            document.getElementById('unit-label').innerText = "N";
+            setTimeout(() => { drawStage2_4Forces(f1, f2, f3, f4); }, 50);
+        }
     } 
-    // --- ステージ6：平行力の合成 ---
+    // --- ステージ6：平行力の合成（解説を内分・外分比の表現に変更） ---
     else if (currentStage === 6) {
         document.getElementById('q-title').innerText = "ステージ6：平行力の合成（異なる2つの着力点）";
         const distance = Math.floor(Math.random() * 5) + 3; 
@@ -432,10 +449,11 @@ function generateQuestion() {
             currentQ = {
                 ans: Math.round(ansDist * 10) / 10,
                 text: `距離 L = ${distance} m 離れた異なる2点 A, B があり、それぞれに同一方向（下向き）の平行力 FA = ${fA} N、FB = ${fB} N が働いています。合力の作用線は、点Aから何m離れた位置にあるか求めよ。`,
-                comment: `【解説】\n同向平行力の合力は FA + FB = ${R} N であり、点Aと点Bを力に反比例する比率で「内分」した位置に作用します。\n` +
-                         `点Aのまわりのモーメントのつり合いより：\n` +
-                         `FA ・ 0 + FB ・ L = R ・ d\n` +
-                         `d = (FB ・ L) / R = (${fB} ・ ${distance}) / ${R} = ${ansDist.toFixed(2)} ≒ ${Math.round(ansDist * 10) / 10} m`
+                comment: `【解説】\n向きが同じ2つの平行力の合力は、その作用線が線分ABを「力の大きさの逆比」で内分する点を通ります。\n` +
+                         `すなわち、点Aからの距離 d は、全体の長さ L を FA と FB の比率で反比例の内分点として求められます。\n` +
+                         `d = L ・ [FB / (FA + FB)]\n` +
+                         `  = ${distance} ・ [${fB} / (${fA} + ${fB})]\n` +
+                         `  = ${ansDist.toFixed(2)} ≒ ${Math.round(ansDist * 10) / 10} m`
             };
         } else {
             const fMax = Math.max(fA, fB) + 10;
@@ -445,16 +463,17 @@ function generateQuestion() {
             currentQ = {
                 ans: Math.round(ansDist * 10) / 10,
                 text: `距離 L = ${distance} m 離れた2点 A, B に、互いに逆方向の平行力 FA = ${fMax} N（下向き）と FB = ${fMin} N（上向き）が働いています。合力の作用位置は、点Aから何m離れた位置（点Bの反対側の外分点）にあるか求めよ。`,
-                comment: `【解説】\n異向平行力の合力は FA - FB = ${R} N（下向き）になり、点Aの外側の「外分点」に作用します。\n` +
-                         `点Aのまわりのモーメントのつり合いより（反時計回りを正とする）：\n` +
-                         `FB ・ L - R ・ d = 0\n` +
-                         `d = (FB ・ L) / R = (${fMin} ・ ${distance}) / ${R} = ${ansDist.toFixed(2)} ≒ ${Math.round(ansDist * 10) / 10} m`
+                comment: `【解説】\n向きが逆の2つの平行力の合力は、その作用線が線分ABを「力の大きさの逆比」で外分する点を通ります。\n` +
+                         `大きい方の力 FA がかかる点Aの外側（点Bの反対側）に作用点があり、点Aからの距離 d は外分点の長さの比の関係から以下のように定まります。\n` +
+                         `d = L ・ [FB / (FA - FB)]\n` +
+                         `  = ${distance} ・ [${fMin} / (${fMax} - ${fMin})]\n` +
+                         `  = ${ansDist.toFixed(2)} ≒ ${Math.round(ansDist * 10) / 10} m`
             };
         }
         document.getElementById('unit-label').innerText = "m";
         setTimeout(() => { drawParallelTwo(fA, fB, distance, isSameDirection); }, 50);
     }
-    // --- ステージ7：力の等価な置き換え ---
+    // --- ステージ7：力の等価な置き換え（偶力矢印追加） ---
     else if (currentStage === 7) {
         document.getElementById('q-title').innerText = "ステージ7：力の等価な置き換え（力 ⇄ 力＋偶力）";
         
@@ -471,7 +490,7 @@ function generateQuestion() {
             currentQ = {
                 ans: Math.round(Mo * 10) / 10,
                 text: `座標 (x, y) = (${x}, ${y}) m の位置に、角度 θ = ${th}° を向く大きさ F = ${f} N の力が働いています。この力を原点 (0,0) に平行移動させ、かつ元の力学的作用を完全に保つ（等価にする）ために、原点に新しく付加すべき「偶力モーメント M (N・m)」を求めよ。（※反時計回りをプラス、時計回りをマイナスとして符号付きで答えること）`,
-                comment: `【解説】\n力を原点に集約させると、元の位置と原点との間で「原点まわりのモーメント」が発生します。\n` +
+                comment: `【解説】\n力を原点に集約させると、元の位置と原点との間で原点まわりのモーメントが発生します。\n` +
                          `力ベクトルの各成分は：\n` +
                          `Fx = ${f} ・ cos(${th}°) = ${fx.toFixed(2)} N,  Fy = ${f} ・ sin(${th}°) = ${fy.toFixed(2)} N\n` +
                          `等価な偶力モーメント Mo = x ・ Fy - y ・ Fx\n` +
@@ -495,10 +514,24 @@ function generateQuestion() {
             setTimeout(() => { drawEquivStep2(f, Mo); }, 50);
         }
     }
-    // --- ステージ8：平行力の合成 ---
+    // --- ステージ8：平行力の合成（位置を0.5m刻みでランダム化） ---
     else if (currentStage === 8) {
         document.getElementById('q-title').innerText = "ステージ8：平行力の合成（3つ以上の異なる着力点）";
-        const x1 = 1; const x2 = 3; const x3 = 5;
+        
+        // 0.5m刻みで重複しない3つの位置（0.5m〜5.5mの範囲）を昇順に生成
+        let positions = [];
+        while (positions.length < 3) {
+            let pos = (Math.floor(Math.random() * 11) + 1) * 0.5; // 0.5, 1.0, 1.5, ..., 5.5
+            if (!positions.includes(pos)) {
+                positions.push(pos);
+            }
+        }
+        positions.sort((a, b) => a - b);
+        
+        const x1 = positions[0]; 
+        const x2 = positions[1]; 
+        const x3 = positions[2];
+        
         const R = f1 + f2 + f3;
         const Ma = (f1 * x1) + (f2 * x2) + (f3 * x3);
         const ans = Ma / R;
@@ -508,9 +541,9 @@ function generateQuestion() {
             text: `水平な梁の左端Aから、x1 = ${x1} m の位置に F1 = ${f1} N、x2 = ${x2} m の位置に F2 = ${f2} N、x3 = ${x3} m の位置に F3 = ${f3} N の3つの下向き平行力が働いています。合力の作用位置は、左端Aから何mの距離にあるか求めよ。`,
             comment: `【解説】\nすべての平行力を合算します：\n` +
                      `合力 R = ${f1} + ${f2} + ${f3} = ${R} N\n` +
-                     `点Aまわりのモーメントの総和 MA = (${f1}・${x1}) + (${f2}・${x2}) + (${f3}・${x3}) = ${Ma} N・m\n` +
-                     `モーメントの定理（バリニオンの定理）より、作用位置 X は：\n` +
-                     `X = MA / R = ${Ma} / ${R} = ${ans.toFixed(2)} ≒ ${Math.round(ans * 10) / 10} m`
+                     `点Aまわりのモーメントの総和 MA = (${f1}・${x1}) + (${f2}・${x2}) + (${f3}・${x3}) = ${Ma.toFixed(2)} N・m\n` +
+                     `合力によるモーメントが個々の力のモーメントの総和と等しくなる性質から、作用位置 X は：\n` +
+                     `X = MA / R = ${Ma.toFixed(2)} / ${R} = ${ans.toFixed(2)} ≒ ${Math.round(ans * 10) / 10} m`
         };
         document.getElementById('unit-label').innerText = "m";
         setTimeout(() => { drawStage3(f1, f2, f3, x1, x2, x3); }, 50);
@@ -559,14 +592,14 @@ function generateQuestion() {
             ansAngle: Math.round(ansAngle * 10) / 10,
             ansDist: Math.round(ansDist * 10) / 10,
             text: qText,
-            comment: `【解説】（ステージ6・7・8の知識を結集します！）\n` +
-                     `1. 各力を水平(x)・鉛直(y)成分に分解し、原点に持ってきたときの並進合力を求めます。\n` +
+            comment: `【解説】\n` +
+                     `1. 各力を水平(x)・鉛直(y)成分に分解し、原点に集約したときの並進合力を求めます。\n` +
                      `   Fx = ${totalRx.toFixed(1)} N,  Fy = ${totalRy.toFixed(1)} N\n` +
                      `   合力の大きさ R = √(Fx² + Fy²) = ${ansSize.toFixed(2)} ≒ ${Math.round(ansSize * 10) / 10} N\n` +
                      `   合力の方向 φ = tan⁻¹(Fy / Fx) ≒ ${Math.round(ansAngle * 10) / 10}°（x軸正方向から反時計回り）\n\n` +
-                     `2. 各力の原点まわりのモーメントの総和（偶力モーメント）を求めます（ステージ7の等価移動）。\n` +
+                     `2. 各力の原点まわりのモーメントの総和（偶力モーメント）を求めます。\n` +
                      `   Mo = Σ(xi・Fyi - yi・Fxi) = ${totalM.toFixed(1)} N・m\n\n` +
-                     `3. この力 R と偶力 Mo を、1本の等価な合力線に置き換えます（ステージ7の逆変換）。\n` +
+                     `3. この力 R と偶力 Mo を、1本の等価な合力線に置き換えます。\n` +
                      `   原点からの最短距離 d = |Mo| / R = ${Math.abs(totalM).toFixed(1)} / ${ansSize.toFixed(1)} ≒ ${Math.round(ansDist * 10) / 10} m`
         };
         setTimeout(() => { drawStage4(forces); }, 50);
@@ -619,10 +652,18 @@ function checkAnswer() {
         comDiv.innerText = `【模範解答】\n①大きさ: ${currentQ.ansSize} N\n②全体の向き: ${currentQ.ansAngle} °\n③原点からの最短距離: ${currentQ.ansDist} m\n\n${currentQ.comment}`;
     } else {
         const userAns = parseFloat(document.getElementById('user-answer').value);
-        if (Math.abs(userAns - currentQ.ans) < 0.15) {
-            isCorrect = true;
+        
+        // stage3の第4象限において、マイナス角度表記の解答も許容する
+        if (currentStage === 3 && currentQ.isQuadrant4) {
+            if (Math.abs(userAns - currentQ.ans) < 0.15 || Math.abs(userAns - currentQ.altAns) < 0.15) {
+                isCorrect = true;
+            }
+        } else {
+            if (Math.abs(userAns - currentQ.ans) < 0.15) {
+                isCorrect = true;
+            }
         }
-        comDiv.innerText = `【正解】: ${currentQ.ans} ${document.getElementById('unit-label').innerText}\n\n${currentQ.comment}`;
+        comDiv.innerText = `【正解】: ${currentQ.ans} ${document.getElementById('unit-label').innerText} ${currentQ.isQuadrant4 ? `(または ${currentQ.altAns} °)` : ''}\n\n${currentQ.comment}`;
     }
 
     const targetCombo = (currentStage === 1 || currentStage === 2) ? 5 : 3;
@@ -633,15 +674,15 @@ function checkAnswer() {
         if (currentStage === 9) {
             const generatedKey = generateKeyword(9);
             keyDiv.classList.remove('hidden');
-            msgDiv.innerText = "🏆 力と偶力の等価合成、そしてバラバラな力系の合成まで完全制覇！君は真の力学マスターだ！！";
-            keyDiv.innerHTML = `<span style="font-size: 15px; color: #333; font-weight: bold;">素晴らしい！(￣ー￣)ﾆﾔﾘ。最終キーワードを担当教員に送ろう</span><br><br><strong>最終クリアキーワード：</strong><br><span style="font-size: 24px; color: #d9534f; font-weight: bold;">${generatedKey}</span>`;
+            msgDiv.innerText = "🏆 力と偶力の等価合成、構成力学の基本ノックを完全制覇！";
+            keyDiv.innerHTML = `<span style="font-size: 15px; color: #333; font-weight: bold;">素晴らしい。最終キーワードを担当教員に送ろう</span><br><br><strong>最終クリアキーワード：</strong><br><span style="font-size: 24px; color: #d9534f; font-weight: bold;">${generatedKey}</span>`;
             document.getElementById('next-btn').classList.add('hidden'); 
         } else {
             comboCount++;
             if (comboCount >= targetCombo) {
                 const generatedKey = generateKeyword(currentStage);
                 keyDiv.classList.remove('hidden');
-                msgDiv.innerText = `🎉 ${targetCombo}連続正解！ステージ ${currentStage} クリア！次の段階へ！`;
+                msgDiv.innerText = `🎉 ${targetCombo}連続正解！ステージ ${currentStage} クリア！`;
                 keyDiv.innerHTML = `<strong>ステージ ${currentStage} 通過キーワード：</strong><br><span style="font-size: 20px; color: #d9534f; font-weight: bold;">${generatedKey}</span>`;
                 currentStage++;
                 comboCount = 0;
@@ -663,9 +704,8 @@ function nextQuestion() {
     generateQuestion();
 }
 
-// --- 描画ロジック群（サイズ450x450版に最適化） ---
+// --- 描画ロジック群 ---
 
-// 直角三角形の描画
 function drawTriangle(L, th, type = 'cos', labelL = '', labelX = '', labelY = '') {
     const canvas = document.getElementById('vector-canvas');
     if (!canvas) return;
@@ -752,7 +792,6 @@ function drawTriangle(L, th, type = 'cos', labelL = '', labelX = '', labelY = ''
     }
 }
 
-// 力の直交成分の描画
 function drawForceComponent(F, th) {
     const canvas = document.getElementById('vector-canvas');
     if (!canvas) return;
@@ -805,7 +844,6 @@ function drawForceComponent(F, th) {
     ctx.fillText("Fy", startX - 35, startY + (ty-startY)/2 + 5);
 }
 
-// 任意方向への力の分解を描画 (ステージ4)
 function drawArbitraryDecomp(F, alpha, beta) {
     const canvas = document.getElementById('vector-canvas');
     if (!canvas) return;
@@ -841,7 +879,6 @@ function drawArbitraryDecomp(F, alpha, beta) {
     ctx.fillText("Fa = ?", sx + 100 * Math.cos(radA), sy + 100 * Math.sin(radA) - 10);
 }
 
-// 4象限対応成分ベクトルの描画
 function drawQuadrantForce(fx, fy) {
     const canvas = document.getElementById('vector-canvas');
     if (!canvas) return;
@@ -891,7 +928,6 @@ function drawQuadrantForce(fx, fy) {
     ctx.fillText("θ = ?", cx + 40, cy - 15);
 }
 
-// 2つの力の合成用
 function drawStage1(f1, f2, angleDeq, showAngleText) {
     const canvas = document.getElementById('vector-canvas');
     const ctx = canvas.getContext('2d');
@@ -912,7 +948,19 @@ function drawStage1(f1, f2, angleDeq, showAngleText) {
     }
 }
 
-// 4つの力の合成用（ステージ5）
+function drawStage2_3Forces(f1, f2, f3, th2, th3) {
+    const canvas = document.getElementById('vector-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const centerX = 225; const centerY = 250; const scale = 2.0; 
+    ctx.beginPath(); ctx.arc(centerX, centerY, 6, 0, 2 * Math.PI); ctx.fillStyle = '#333'; ctx.fill();
+    drawArrow(ctx, centerX, centerY, centerX + f1*scale, centerY, '#007bff', `F1=${f1}N`, 3.5, 8);
+    const rad2 = -th2 * Math.PI / 180;
+    drawArrow(ctx, centerX, centerY, centerX + (f2*scale)*Math.cos(rad2), centerY + (f2*scale)*Math.sin(rad2), '#dc3545', `F2=${f2}N`, 3.5, 8);
+    const rad3 = -th3 * Math.PI / 180;
+    drawArrow(ctx, centerX, centerY, centerX + (f3*scale)*Math.cos(rad3), centerY + (f3*scale)*Math.sin(rad3), '#28a745', `F3=${f3}N`, 3.5, 8);
+}
+
 function drawStage2_4Forces(f1, f2, f3, f4) {
     const canvas = document.getElementById('vector-canvas');
     const ctx = canvas.getContext('2d');
@@ -927,7 +975,6 @@ function drawStage2_4Forces(f1, f2, f3, f4) {
     drawArrow(ctx, centerX, centerY, centerX + (f4*scale)*Math.cos(rad4), centerY + (f4*scale)*Math.sin(rad4), '#ffc107', `F4=${f4}N`, 3.5, 8);
 }
 
-// 2つの異なる平行力 (ステージ6)
 function drawParallelTwo(fA, fB, distance, isSameDirection) {
     const canvas = document.getElementById('vector-canvas');
     const ctx = canvas.getContext('2d');
@@ -949,7 +996,6 @@ function drawParallelTwo(fA, fB, distance, isSameDirection) {
     }
 }
 
-// 3つの平行力用 (ステージ8)
 function drawStage3(f1, f2, f3, x1, x2, x3) {
     const canvas = document.getElementById('vector-canvas');
     const ctx = canvas.getContext('2d');
@@ -963,7 +1009,6 @@ function drawStage3(f1, f2, f3, x1, x2, x3) {
     drawArrow(ctx, startX + x3*mmScale, 225 - f3*1.3, startX + x3*mmScale, 225, '#28a745', `F3`, 3.5, 8);
 }
 
-// 力の等価置き換え用（移動の図：ステージ7）
 function drawEquivStep1(x, y, f, th) {
     const canvas = document.getElementById('vector-canvas');
     const ctx = canvas.getContext('2d');
@@ -979,7 +1024,11 @@ function drawEquivStep1(x, y, f, th) {
     ctx.stroke();
 
     ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(20, oy); ctx.lineTo(430, oy); ctx.moveTo(ox, 20); ctx.lineTo(ox, 430); ctx.stroke();
+    ctx.beginPath(); 
+    ctx.moveTo(20, oy); ctx.lineTo(430, oy); 
+    ctx.moveTo(ox, 20); ctx.lineTo(ox, 430); 
+    ctx.stroke(); // 修正点: stroke(); から ctx.stroke(); へ修正
+    
     ctx.fillStyle = '#333'; ctx.font = 'bold 13px Arial'; ctx.fillText('O(0,0)', ox - 50, oy + 20);
 
     const px = ox + x * pScale;
@@ -993,7 +1042,6 @@ function drawEquivStep1(x, y, f, th) {
     drawArrow(ctx, px, py, tx, ty, '#dc3545', `F=${f}N`, 3.5, 9);
 }
 
-// 偶力から1本の力への等価置き換え用（ステージ7）
 function drawEquivStep2(f, Mo) {
     const canvas = document.getElementById('vector-canvas');
     const ctx = canvas.getContext('2d');
@@ -1007,13 +1055,37 @@ function drawEquivStep2(f, Mo) {
     
     ctx.strokeStyle = '#ffc107'; ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(ox, oy, 40, 0.2*Math.PI, 1.3*Math.PI, Mo > 0 ? true : false);
+    
+    const startAngle = 0.2 * Math.PI;
+    const endAngle = 1.3 * Math.PI;
+    const isCcw = Mo > 0; 
+    
+    ctx.arc(ox, oy, 40, startAngle, endAngle, isCcw ? true : false);
     ctx.stroke();
+    
+    ctx.fillStyle = '#ffc107';
+    ctx.beginPath();
+    if (isCcw) {
+        const arrowAngle = endAngle - Math.PI/2; 
+        const ax = ox + 40 * Math.cos(endAngle);
+        const ay = oy + 40 * Math.sin(endAngle);
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(ax - 10 * Math.cos(arrowAngle - Math.PI/6), ay - 10 * Math.sin(arrowAngle - Math.PI/6));
+        ctx.lineTo(ax - 10 * Math.cos(arrowAngle + Math.PI/6), ay - 10 * Math.sin(arrowAngle + Math.PI/6));
+    } else {
+        const arrowAngle = startAngle + Math.PI/2;
+        const ax = ox + 40 * Math.cos(startAngle);
+        const ay = oy + 40 * Math.sin(startAngle);
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(ax - 10 * Math.cos(arrowAngle - Math.PI/6), ay - 10 * Math.sin(arrowAngle - Math.PI/6));
+        ctx.lineTo(ax - 10 * Math.cos(arrowAngle + Math.PI/6), ay - 10 * Math.sin(arrowAngle + Math.PI/6));
+    }
+    ctx.fill();
+
     ctx.fillStyle = '#ffc107'; ctx.font = 'bold 14px Arial';
     ctx.fillText(`M = ${Mo} N・m`, ox + 45, oy - 25);
 }
 
-// 一般平面力系（最終ステージ用）
 function drawStage4(forces) {
     const canvas = document.getElementById('vector-canvas');
     const ctx = canvas.getContext('2d');
